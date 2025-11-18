@@ -1,0 +1,75 @@
+# tempo-values.yaml  ── ready for helm upgrade
+image:
+  registry: docker.io
+  repository: grafana/tempo
+  tag: 2.8.1              # same version the chart pulled
+
+tempo:
+  server:
+    http_listen_port: 3200
+    grpc_listen_port: 9095
+
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo
+      wal:
+        path: /var/tempo/wal
+      block:
+        retention: 24h
+
+  search_enabled: true
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 200m
+      memory: 512Mi
+
+############################################
+# 1 ─ Receivers
+############################################
+receivers:                    # <- TOP-LEVEL (chart 1.46 expects it here)
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+############################################
+# 2 ─ Service ports (chart will create the svc)
+############################################
+service:
+  ports:                      # also TOP-LEVEL
+    - name: http
+      port: 3200
+      targetPort: 3200
+    - name: grpc-status
+      port: 9095
+      targetPort: 9095
+    - name: otlp-grpc         # OTLP/gRPC for SDKs
+      port: 4317
+      targetPort: 4317
+    - name: otlp-http         # OTLP/HTTP (optional)
+      port: 4318
+      targetPort: 4318
+
+############################################
+# 3 ─ Component-specific overrides (optional)
+############################################
+queryFrontend:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 100m
+      memory: 256Mi
+
+compactor:
+  compaction:
+    block_retention: 24h
